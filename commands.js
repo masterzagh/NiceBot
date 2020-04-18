@@ -205,24 +205,29 @@ let wordReactionTimeout = 15*60*1000;
 let wordReactionTimeouts = {};
 let maxWordPerMessage = 5;
 
-let rude_words = fs.readFileSync('wordlists/rude.txt', 'utf8').split(/(\r\n|\r|\n)/);
 let nice_words = fs.readFileSync('wordlists/nice.txt', 'utf8').split(/(\r\n|\r|\n)/);
-let rude_map = rude_words.reduce((cum, word) => {
-	if(!word.match(/^(|\r\n|\r|\n)$/))
-		cum[word] = true;
-	return cum;
-}, {});
-let nice_map = nice_words.reduce((cum, word) => {
-	if(!word.match(/^(|\r\n|\r|\n)$/))
-		cum[word] = true;
-	return cum;
-}, {});
-let rude_regex = new RegExp(`(${rude_words.join('|')})`, 'gi');
-let nice_regex = new RegExp(`(${nice_words.join('|')})`, 'gi');
+let rude_words = fs.readFileSync('wordlists/rude.txt', 'utf8').split(/(\r\n|\r|\n)/);
 
-let rude_reaction = [':(', 'That\'s not nice.'];
-let nice_reaction = [':)', 'Nice message!'];
+let word_filter = word => !word.match(/^(|\r\n|\r|\n)$/);
+nice_words = nice_words.filter(word_filter);
+rude_words = rude_words.filter(word_filter);
+/*
+let nice_map = nice_words.reduce((cum, word) => {
+	cum[word] = true;
+	return cum;
+}, {});
+let rude_map = rude_words.reduce((cum, word) => {
+	cum[word] = true;
+	return cum;
+}, {});
+*/
+let nice_regex = new RegExp(`(${nice_words.join('|')})`, 'gi');
+let rude_regex = new RegExp(`(${rude_words.join('|')})`, 'gi');
+
+let rude_reaction = [':(', 'That\'s not nice.', 'Please be nice :('];
+let nice_reaction = [':)', 'Nice message!', 'You\'re an awesome fren :)'];
 commands.not_a_command = function(msg){
+/*
 	let words = msg.content.split(/\s+/);
 	let rude_count = 0;
 	let nice_count = 0;
@@ -240,6 +245,14 @@ commands.not_a_command = function(msg){
 				rude_count++;
 		}
 	});
+*/
+	let nice_match = msg.content.match(nice_regex);
+	let rude_match = msg.content.match(rude_regex);
+	let nice_count = nice_match?Math.min(nice_match.length, maxWordPerMessage):0;
+	let rude_count = rude_match?Math.min(rude_match.length, maxWordPerMessage):0;
+	let count = nice_count + rude_count;
+	let level = nice_count - rude_count;
+
 	if(count>0){
 		db.getUser(msg.author.id).then(db_user => {
 			db_user.rude_words += rude_count;
