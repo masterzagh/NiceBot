@@ -119,10 +119,11 @@ commands.add('points', function(msg, name, args){
 			user = mention;
 	}
 	db.getUser(user.id).then(db_user => {
+		let pronoun = user === msg.author ? 'Your' : user.username + "'s";
 		let embed = userEmbed(user)
 			.addField('[NP] Nice Points', db_user.nice_points)
-			.addField('Your action score', db_user.hugs+db_user.kisses, true)
-			.addField('Your word score', db_user.nice_words-db_user.rude_words, true);
+			.addField(pronoun+' action score', db_user.hugs+db_user.kisses, true)
+			.addField(pronoun+' word score', db_user.nice_words-db_user.rude_words, true);
 
 		msg.channel.send(embed).then(msg => {
 			msg.react('🔁');
