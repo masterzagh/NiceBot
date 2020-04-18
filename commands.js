@@ -119,7 +119,7 @@ commands.add('points', function(msg, name, args){
 			user = mention;
 	}
 	db.getUser(user.id).then(db_user => {
-		let pronoun = user === msg.author ? 'Your' : user.username + "'s";
+		let pronoun = user === msg.author ? 'Your' : user.username.match(/[\w\s-]+/g).join("") + "'s";
 		let embed = userEmbed(user)
 			.addField('[NP] Nice Points', db_user.nice_points)
 			.addField(pronoun+' action score', db_user.hugs+db_user.kisses, true)
@@ -130,8 +130,8 @@ commands.add('points', function(msg, name, args){
 			awaitReactions(msg.id, [author.id], ['🔁'], (reaction, user) => {
 				let embed = userEmbed(user)
 					.addField('[NP] Nice Points', db_user.nice_points)
-					.addField('Your action score', db_user.hugs+db_user.kisses, true)
-					.addField('Your word score', db_user.nice_words-db_user.rude_words, true);
+					.addField(pronoun+' action score', db_user.hugs+db_user.kisses, true)
+					.addField(pronoun+' word score', db_user.nice_words-db_user.rude_words, true);
 				msg.edit(embed);
 			});
 		});;
