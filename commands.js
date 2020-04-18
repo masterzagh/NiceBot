@@ -110,7 +110,8 @@ commands.add('nice', function(msg, name, args){
 	return 'Nice.';
 });
 commands.add('points', function(msg, name, args){
-	let user = msg.author;
+	let author = msg.author;
+	let user = author;
 	let mention = msg.mentions.users.first();
 	if(args[0]){
 		let match = args[0].match(/<@!?(\d+)>/);
@@ -123,7 +124,16 @@ commands.add('points', function(msg, name, args){
 			.addField('Your action score', db_user.hugs+db_user.kisses, true)
 			.addField('Your word score', db_user.nice_words-db_user.rude_words, true);
 
-		msg.channel.send(embed);
+		msg.channel.send(embed).then(msg => {
+			msg.react('🔁');
+			awaitReactions(msg.id, [author.id], ['🔁'], (reaction, user) => {
+				let embed = userEmbed(user)
+					.addField('[NP] Nice Points', db_user.nice_points)
+					.addField('Your action score', db_user.hugs+db_user.kisses, true)
+					.addField('Your word score', db_user.nice_words-db_user.rude_words, true);
+				msg.edit(embed);
+			});
+		});;
 	});
 }, function(msg){
 	return 'Check your points.';
