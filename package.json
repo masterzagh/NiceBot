@@ -4,9 +4,9 @@
   "description": "NiceBot - Turn your discord server nice instantly!!!",
   "main": "index.js",
   "dependencies": {
+    "better-sqlite3": "^6.0.1",
     "discord.js": "^12.2.0",
-    "dotenv": "^8.2.0",
-    "sqlite3": "^4.1.1"
+    "dotenv": "^8.2.0"
   },
   "devDependencies": {},
   "scripts": {

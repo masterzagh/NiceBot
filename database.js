@@ -1,48 +1,41 @@
 const fs = require('fs');
-const sqlite = require('sqlite3');
+const bsqlite = require('better-sqlite3');
 
-let db = new sqlite.Database('./users.db');
+let db = new bsqlite('./users.db');
+
+// Create migrations table if it doesn't already exist
 db.exec(`
 	CREATE TABLE IF NOT EXISTS migrations(
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		file VARCHAR(256)
 	);
-`, error => {
-	if(error) return console.error('Error creating migrations', error);
-	db.all('SELECT * FROM migrations;', [], (err, rows) => {
-		if(err) return console.error('Error reading migrations', error);
-		let index = rows.reduce((cum, row) => {
-			cum[row.file] = true;
-			return cum;
-		}, {});
+`);
 
-		// Run migrations
-		let files;
-		function runMigrations(){
-			let file = files.shift();
-			if(!file){
-				if(db.onReady) db.onReady();
-				else console.log('There is no db ready callback');
-				return;
-			}
-			if(index[file]) return setTimeout(runMigrations, 0);
+// Make an index of already executed migrations
+let migrations = db.prepare('SELECT * FROM migrations;').all();
+let index = migrations.reduce((cum, migration) => {
+	cum[migration.file] = true;
+	return cum;
+}, {});
 
-			let sql = fs.readFileSync('migrations/'+file, 'utf8');
-			db.exec(sql, error => {
-				if(error) return console.error(`Error running migration '${file}'`, error);
-				console.log(`Successfully ran migration '${file}'`);
-				db.exec(`INSERT INTO migrations(file) VALUES ('${file}');`, error => {
-					if(error) return console.error(`Error updating migrations table`, error);
-					runMigrations();
-				});
-			});
-		}
-		fs.readdir('migrations', (err, f) => {
-			if(err) return console.log('Error reading migrations');
-			files = f.sort();
-			runMigrations();
-		});
+// Run new migrations
+fs.readdir('migrations', (err, f) => {
+	if(err) return console.log('Error reading migrations');
+	files = f.sort();
+	files.forEach(file => {
+		if(index[file]) return;
+
+
+		let sql = fs.readFileSync('migrations/'+file, 'utf8');
+		db.exec('BEGIN TRANSACTION;');
+		db.exec(sql);
+		db.exec(`INSERT INTO migrations(file) VALUES ('${file}');`);
+		db.exec('COMMIT;');
+		console.log(`Successfully ran migration '${file}'`);
 	});
+
+	if(db.onReady) db.onReady();
+	else console.log('There is no db ready callback');
 });
 
 // Inner Utils
@@ -56,17 +49,15 @@ function saveDatabase(){
 	}
 
 	console.log('[DB] Start save');
-	let promises = [];
-	promises.push(DB_User.save());
-	Promise.all(promises).then(_ => {
-		db_dirty = false;
-		console.log('[DB] Finish save');
-		setTimeout(saveDatabase, saveTimeout);
-	});
+	DB_User.save();
+	console.log('[DB] Finish save');
+
+	db_dirty = false;
+	setTimeout(saveDatabase, saveTimeout);
 }
 setTimeout(saveDatabase, saveTimeout);
 
-// "Model"
+// "Models"
 function DB_User(row){
 	if(!DB_User.columns){
 		DB_User.columns = [];
@@ -91,6 +82,30 @@ function DB_User(row){
 DB_User.cache = {};
 DB_User.dirty = {};
 DB_User.isDirty = false;
+
+DB_User.insertStmt = db.prepare(`
+	INSERT INTO users(user_id, nice_points)
+	VALUES (?, ?);
+`);
+DB_User.getStmt = db.prepare(`
+	SELECT *
+	FROM users
+	WHERE user_id = ?;
+`);
+DB_User.get = function(user_id){
+	let user = DB_User.cache[user_id];
+	if(user) return user;
+
+	user = DB_User.getStmt.get(user_id);
+	if(!user){
+		DB_User.insertStmt.run(user_id, 100); // Start off with 100 points
+		user = DB_User.getStmt.get(user_id);
+	}
+
+	user = new DB_User(user);
+	DB_User.cache[user.user_id] = user;
+	return user;
+}
 DB_User.save = function(){
 	if(!DB_User.isDirty) return;
 
@@ -104,38 +119,16 @@ DB_User.save = function(){
 
 	let sql = `REPLACE INTO users (${DB_User.columns.join(',')})\nVALUES\n${values.join(',\n')};`
 
-	return new Promise((succ, fail) => {
-		db.exec(sql, err => {
-			if(err) console.error('Error replacing into!', err, sql);
-			succ();
-		});
-	});
+	db.exec(sql);
 }
 
 // Utils
-let defaultPoints = 100;
 db.getUser = function(user_id){
-	return new Promise((succ, fail) => {
-		if(DB_User.cache[user_id]) return succ(DB_User.cache[user_id]);
-		db.get(`SELECT * FROM users WHERE user_id = ${user_id};`, (error, row) => {
-			if(error) return console.error('[DB] Failed to get user'); //fail(error);
-			if(row === undefined){
-				db.run(`
-					INSERT INTO users(user_id, nice_points) VALUES
-					(${user_id}, ${defaultPoints});
-				`, (error) => {
-					if(error) return fail(error);
-					db.getUser(user_id).then(succ);
-				});
-			}else{
-				let db_user = DB_User(row);
-				DB_User.cache[db_user.user_id] = db_user;
-				succ(DB_User(row));
-			}
-		})
-	});
+	return DB_User.get(user_id);
 };
-
+db.save = function(){
+	saveDatabase();
+}
 
 // Exports
 module.exports.db = db;

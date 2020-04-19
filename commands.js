@@ -4,6 +4,14 @@ let db;
 let client;
 let Discord;
 function Commands(){
+	let prefix;
+	Object.defineProperty(this, 'prefix', {
+		set: p => {
+			prefix = p;
+			this.commandMatch = new RegExp(`${p}(.+?)( |$)`);
+		},
+		get: _ => prefix
+	})
 	this.prefix = '!';
 	this.commands = {};
 	this.names = [];
@@ -28,7 +36,7 @@ function Commands(){
 
 	this.run = function(content, object){
 		if(!content.startsWith(this.prefix)) return this.not_a_command(object);
-		let match = content.match(/'(.+?)( |$)/);
+		let match = content.match(this.commandMatch);
 		if(!match || !match[1]) return this.no_match(object);
 
 		let name = match[1];
@@ -63,7 +71,6 @@ function awaitReactions(msg_id, user_ids, emojis, run){
 // Session
 let sessions = {};
 
-
 // Utils
 function baseEmbed(){
 	return new Discord.MessageEmbed()
@@ -75,6 +82,13 @@ function userEmbed(author){
  return baseEmbed()
 	 .setAuthor(author.tag, author.avatarURL())
 	 .setThumbnail(author.avatarURL());
+}
+function getUserFromArg(msg, arg){
+	if(!arg) return null;
+	let mention = msg.mentions.users.first();
+	let match = arg.match(/<@!?(\d+)>/);
+	if(match && match[1] && mention && mention.id == match[1])
+		user = mention;
 }
 
 // Add commands
@@ -101,10 +115,10 @@ commands.add('help', function(msg, name, args){
 	// Empty for now
 });
 commands.add('nice', function(msg, name, args){
-	db.getUser(msg.author.id).then(db_user => {
-		db_user.nice_points += 10;
-		db_user.save();
-	});
+	let db_user = db.getUser(msg.author.id);
+	db_user.nice_points += 10;
+	db_user.save();
+
 	msg.channel.send("", {files: ['images/nice.gif']});
 }, function(msg){
 	return 'Nice.';
@@ -112,29 +126,25 @@ commands.add('nice', function(msg, name, args){
 commands.add('points', function(msg, name, args){
 	let author = msg.author;
 	let user = author;
-	let mention = msg.mentions.users.first();
-	if(args[0]){
-		let match = args[0].match(/<@!?(\d+)>/);
-		if(match && match[1] && mention && mention.id == match[1])
-			user = mention;
-	}
-	db.getUser(user.id).then(db_user => {
-		let pronoun = user === msg.author ? 'Your' : user.username.match(/[\w\s-]+/g).join("") + "'s";
-		let embed = userEmbed(user)
-			.addField('[NP] Nice Points', db_user.nice_points)
-			.addField(pronoun+' action score', db_user.hugs+db_user.kisses, true)
-			.addField(pronoun+' word score', db_user.nice_words-db_user.rude_words, true);
+	let userArg = getUserFromArg(msg, args[0]);
+	if(userArg) user = userArg;
 
-		msg.channel.send(embed).then(msg => {
-			msg.react('🔁');
-			awaitReactions(msg.id, [author.id], ['🔁'], (reaction, user) => {
-				let embed = userEmbed(user)
-					.addField('[NP] Nice Points', db_user.nice_points)
-					.addField(pronoun+' action score', db_user.hugs+db_user.kisses, true)
-					.addField(pronoun+' word score', db_user.nice_words-db_user.rude_words, true);
-				msg.edit(embed);
-			});
-		});;
+	let db_user = db.getUser(user.id);
+	let pronoun = user === msg.author ? 'Your' : user.username.match(/[\w\s-]+/g).join("") + "'s";
+	let embed = userEmbed(user)
+		.addField('[NP] Nice Points', db_user.nice_points)
+		.addField(pronoun+' action score', db_user.hugs+db_user.kisses, true)
+		.addField(pronoun+' word score', db_user.nice_words-db_user.rude_words, true);
+
+	msg.channel.send(embed).then(msg => {
+		msg.react('🔁');
+		awaitReactions(msg.id, [author.id], ['🔁'], (reaction, user) => {
+			let embed = userEmbed(user)
+				.addField('[NP] Nice Points', db_user.nice_points)
+				.addField(pronoun+' action score', db_user.hugs+db_user.kisses, true)
+				.addField(pronoun+' word score', db_user.nice_words-db_user.rude_words, true);
+			msg.edit(embed);
+		});
 	});
 }, function(msg){
 	return 'Check your points.';
@@ -143,29 +153,27 @@ commands.add('points', function(msg, name, args){
 commands.add('hug', function(msg, name, args){
 	let author = msg.author;
 	let originalMsg = msg;
-	db.getUser(author.id).then(db_user => {
-		db_user.hugs++;
-		db_user.save();
-		let embed = userEmbed(author)
-			.addField('Total hugs', db_user.hugs, true)
-			.addField('This session', sessions[originalMsg.id] = 1, true);
 
-		msg.channel.send(embed).then(msg => {
-			msg.react('🤗');
-			awaitReactions(msg.id, [author.id], ['🤗'], (reaction, user) => {
-				db.getUser(author.id).then(db_user => {
-					db_user.hugs++;
-					db_user.save();
+	let db_user = db.getUser(author.id)
+	db_user.hugs++;
+	db_user.save();
 
-					let embed = userEmbed(author)
-						.addField('Total hugs', db_user.hugs, true)
-						.addField('This session', ++sessions[originalMsg.id], true);
+	let embed = userEmbed(author)
+		.addField('Total hugs', db_user.hugs, true)
+		.addField('This session', sessions[originalMsg.id] = 1, true);
 
-					msg.edit(embed);
-				});
-			});
+	msg.channel.send(embed).then(msg => {
+		msg.react('🤗');
+		awaitReactions(msg.id, [author.id], ['🤗'], (reaction, user) => {
+			db_user.hugs++;
+			db_user.save();
+
+			let embed = userEmbed(author)
+				.addField('Total hugs', db_user.hugs, true)
+				.addField('This session', ++sessions[originalMsg.id], true);
+
+			msg.edit(embed);
 		});
-
 	});
 }, function(msg){
 	return 'Perform a nice hug.\nClick the hug reaction to give more than one hug.\nRemember to remove the reaction and add it again several times.';
@@ -173,29 +181,27 @@ commands.add('hug', function(msg, name, args){
 commands.add('kiss', function(msg, name, args){
 	let author = msg.author;
 	let originalMsg = msg;
-	db.getUser(author.id).then(db_user => {
-		db_user.kisses++;
-		db_user.save();
-		let embed = userEmbed(author)
-			.addField('Total kisses', db_user.kisses, true)
-			.addField('This session', sessions[originalMsg.id] = 1, true);
 
-		msg.channel.send(embed).then(msg => {
-			msg.react('💋');
-			awaitReactions(msg.id, [author.id], ['💋'], (reaction, user) => {
-				db.getUser(author.id).then(db_user => {
-					db_user.kisses++;
-					db_user.save();
+	let db_user = db.getUser(author.id);
+	db_user.kisses++;
+	db_user.save();
 
-					let embed = userEmbed(author)
-						.addField('Total kisses', db_user.kisses, true)
-						.addField('This session', ++sessions[originalMsg.id], true);
+	let embed = userEmbed(author)
+		.addField('Total kisses', db_user.kisses, true)
+		.addField('This session', sessions[originalMsg.id] = 1, true);
 
-					msg.edit(embed);
-				});
-			});
+	msg.channel.send(embed).then(msg => {
+		msg.react('💋');
+		awaitReactions(msg.id, [author.id], ['💋'], (reaction, user) => {
+			db_user.kisses++;
+			db_user.save();
+
+			let embed = userEmbed(author)
+				.addField('Total kisses', db_user.kisses, true)
+				.addField('This session', ++sessions[originalMsg.id], true);
+
+			msg.edit(embed);
 		});
-
 	});
 }, function(msg){
 	return 'Perform a nice kiss.\nClick the kiss reaction to give more than one kiss.\nRemember to remove the reaction and add it again several times.';
@@ -227,7 +233,7 @@ let rude_regex = new RegExp(`(${rude_words.join('|')})`, 'gi');
 let rude_reaction = [':(', 'That\'s not nice.', 'Please be nice :('];
 let nice_reaction = [':)', 'Nice message!', 'You\'re an awesome fren :)'];
 commands.not_a_command = function(msg){
-/*
+	/*
 	let words = msg.content.split(/\s+/);
 	let rude_count = 0;
 	let nice_count = 0;
@@ -245,7 +251,7 @@ commands.not_a_command = function(msg){
 				rude_count++;
 		}
 	});
-*/
+	*/
 	let nice_match = msg.content.match(nice_regex);
 	let rude_match = msg.content.match(rude_regex);
 	let nice_count = nice_match?Math.min(nice_match.length, maxWordPerMessage):0;
@@ -254,11 +260,10 @@ commands.not_a_command = function(msg){
 	let level = nice_count - rude_count;
 
 	if(count>0){
-		db.getUser(msg.author.id).then(db_user => {
-			db_user.rude_words += rude_count;
-			db_user.nice_words += nice_count;
-			db_user.save();
-		});
+		let db_user = db.getUser(msg.author.id);
+		db_user.rude_words += rude_count;
+		db_user.nice_words += nice_count;
+		db_user.save();
 
 		let now = Date.now();
 		if (wordReactionTimeouts[msg.author.id] &&
