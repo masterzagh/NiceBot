@@ -89,6 +89,7 @@ function getUserFromArg(msg, arg){
 	let match = arg.match(/<@!?(\d+)>/);
 	if(match && match[1] && mention && mention.id == match[1])
 		user = mention;
+	return user;
 }
 
 // Add commands
