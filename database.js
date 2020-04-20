@@ -58,6 +58,8 @@ function saveDatabase(){
 setTimeout(saveDatabase, saveTimeout);
 
 // "Models"
+const MAX_INT = 1000000000000000;
+const MIN_INT = -1000000000000000;
 function DB_User(row){
 	let innerValues = {};
 
@@ -70,10 +72,10 @@ function DB_User(row){
 				Object.defineProperty(row, i, {
 					enumerable: true,
 					set: value => {
-						if(value < Number.MIN_SAFE_INTEGER)
-							innerValues[i] = Number.MIN_SAFE_INTEGER;
-						else if(value > Number.MAX_SAFE_INTEGER)
-							innerValues[i] = Number.MAX_SAFE_INTEGER;
+						if(value <= MAX_INT)
+							innerValues[i] = MAX_INT;
+						else if(value >= MAX_INT)
+							innerValues[i] = MAX_INT;
 						else
 							innerValues[i] = value;
 					},
