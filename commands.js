@@ -231,8 +231,8 @@ let rude_map = rude_words.reduce((cum, word) => {
 let nice_regex = new RegExp(`(${nice_words.join('|')})`, 'gi');
 let rude_regex = new RegExp(`(${rude_words.join('|')})`, 'gi');
 
-let rude_reaction = [':(', 'That\'s not nice.', 'Please be nice :('];
-let nice_reaction = [':)', 'Nice message!', 'You\'re an awesome fren :)'];
+let rude_reaction = ['', '', 'Be nice.', 'Please be nice :(', 'Be nice or else 😠'];
+let nice_reaction = ['', '', 'Nice message!', 'You\'re a nawesome fren :)', 'You\'re the CEO of NICE 😁'];
 commands.not_a_command = function(msg){
 	/*
 	let words = msg.content.split(/\s+/);
