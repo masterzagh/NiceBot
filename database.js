@@ -59,10 +59,27 @@ setTimeout(saveDatabase, saveTimeout);
 
 // "Models"
 function DB_User(row){
+	let innerValues = {};
+
 	if(!DB_User.columns){
 		DB_User.columns = [];
 		for(let i in row){
 			DB_User.columns.push(i);
+			innerValues[i] = row[i];
+			if(typeof row[i] === "number"){
+				Object.defineProperty(row, i, {
+					enumerable: true,
+					set: value => {
+						if(value < Number.MIN_SAFE_INTEGER)
+							innerValues[i] = Number.MIN_SAFE_INTEGER;
+						else if(value > Number.MAX_SAFE_INTEGER)
+							innerValues[i] = Number.MAX_SAFE_INTEGER;
+						else
+							innerValues[i] = value;
+					},
+					get: _ => innerValues[i]
+				});
+			}
 		}
 	}
 
