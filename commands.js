@@ -91,6 +91,9 @@ function getUserFromArg(msg, arg){
 		user = mention;
 	return user;
 }
+function usage(text){
+	return commands.prefix+text+'\n\n';
+}
 
 // Add commands
 let commands = new Commands();
@@ -122,7 +125,7 @@ commands.add('nice', function(msg, name, args){
 
 	msg.channel.send("", {files: ['images/nice.gif']});
 }, function(msg){
-	return 'Nice.';
+	return usage('nice')+'Nice.';
 });
 commands.add('points', function(msg, name, args){
 	let author = msg.author;
@@ -139,7 +142,7 @@ commands.add('points', function(msg, name, args){
 
 	msg.channel.send(embed).then(msg => {
 		msg.react('🔁');
-		awaitReactions(msg.id, [author.id], ['🔁'], (reaction, user) => {
+		awaitReactions(msg.id, [author.id], ['🔁'], (reaction, u) => {
 			let embed = userEmbed(user)
 				.addField('[NP] Nice Points', db_user.nice_points)
 				.addField(pronoun+' action score', db_user.hugs+db_user.kisses, true)
@@ -148,7 +151,7 @@ commands.add('points', function(msg, name, args){
 		});
 	});
 }, function(msg){
-	return 'Check your points.';
+	return usage('points [@mention]')+'Check yours or another user\'s points.';
 });
 
 commands.add('hug', function(msg, name, args){
@@ -177,7 +180,7 @@ commands.add('hug', function(msg, name, args){
 		});
 	});
 }, function(msg){
-	return 'Perform a nice hug.\nClick the hug reaction to give more than one hug.\nRemember to remove the reaction and add it again several times.';
+	return usage('hug')+'Perform a nice hug.\nClick the hug reaction to give more than one hug.\nRemember to remove the reaction and add it again several times.';
 });
 commands.add('kiss', function(msg, name, args){
 	let author = msg.author;
@@ -205,7 +208,36 @@ commands.add('kiss', function(msg, name, args){
 		});
 	});
 }, function(msg){
-	return 'Perform a nice kiss.\nClick the kiss reaction to give more than one kiss.\nRemember to remove the reaction and add it again several times.';
+	return usage('kiss')+'Perform a nice kiss.\nClick the kiss reaction to give more than one kiss.\nRemember to remove the reaction and add it again several times.';
+});
+
+
+commands.add('send', function(msg, name, args){
+	let author = msg.author;
+	let userArg = getUserFromArg(msg, args[0]);
+	let amount = +args[1];
+	if(!userArg || !amount || author.id == userArg.id) return;
+
+	let db_from = db.getUser(author.id);
+	let db_to = db.getUser(userArg.id);
+
+	if(amount<0){
+		db_from.nice_points += amount;
+		db_from.save();
+		msg.channel.send(`<@${author.id}> That wasn't nice of you...`);
+		return;
+	}else if(db_from.nice_points < amount){
+		msg.channel.send(`<@${author.id}> You don't have enough NP!`);
+		return;
+	}
+
+	db_from.nice_points -= (amount*0.9)|0;
+	db_to.nice_points += amount;
+	db_from.save();
+	db_to.save();
+	msg.channel.send(`<@${author.id}> Sent <@${userArg.id}> ${amount}NP.`);
+}, function(msg){
+	return usage('send @mention amount')+'Send a user some of your points.';
 });
 
 let wordReactionTimeout = 15*60*1000;
