@@ -231,7 +231,7 @@ commands.add('send', function(msg, name, args){
 		return;
 	}
 
-	db_from.nice_points -= (amount*0.9)|0;
+	db_from.nice_points -= amount;
 	db_to.nice_points += amount;
 	db_from.save();
 	db_to.save();

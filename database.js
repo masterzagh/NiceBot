@@ -60,30 +60,37 @@ setTimeout(saveDatabase, saveTimeout);
 // "Models"
 const MAX_INT = 1000000000000000;
 const MIN_INT = -1000000000000000;
-function DB_User(row){
+function DB_COLUMNS(model, row){
+	if(model.columns) return;
+	model.columns = [];
+	for(let i in row){
+		model.columns.push(i);
+	}
+}
+function DB_LIMITS(row){
 	let innerValues = {};
-
-	if(!DB_User.columns){
-		DB_User.columns = [];
-		for(let i in row){
-			DB_User.columns.push(i);
-			innerValues[i] = row[i];
-			if(typeof row[i] === "number"){
-				Object.defineProperty(row, i, {
-					enumerable: true,
-					set: value => {
-						if(value <= MAX_INT)
-							innerValues[i] = MAX_INT;
-						else if(value >= MAX_INT)
-							innerValues[i] = MAX_INT;
-						else
-							innerValues[i] = value;
-					},
-					get: _ => innerValues[i]
-				});
-			}
+	for(let i in row){
+		innerValues[i] = row[i];
+		if(typeof row[i] === "number"){
+			Object.defineProperty(row, i, {
+				enumerable: true,
+				set: value => {
+					if(value <= MIN_INT)
+						innerValues[i] = MIN_INT;
+					else if(value >= MAX_INT)
+						innerValues[i] = MAX_INT;
+					else
+						innerValues[i] = value;
+				},
+				get: _ => innerValues[i]
+			});
 		}
 	}
+}
+
+function DB_User(row){
+	DB_COLUMNS(DB_User, row);
+	DB_LIMITS(row);
 
 	row.save = function(){
 		DB_User.dirty[row.user_id] = true;
