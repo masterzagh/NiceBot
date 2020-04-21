@@ -94,6 +94,9 @@ function getUserFromArg(msg, arg){
 function usage(text){
 	return commands.prefix+text+'\n\n';
 }
+function mention(user_id){
+	return `<@${user_id}> `;
+}
 
 // Add commands
 let commands = new Commands();
@@ -120,8 +123,10 @@ commands.add('help', function(msg, name, args){
 });
 commands.add('nice', function(msg, name, args){
 	let db_user = db.getUser(msg.author.id);
-	db_user.nice_points += 10;
-	db_user.save();
+	if(!db_user.nice_points_locked){
+		db_user.nice_points += 10;
+		db_user.save();
+	}
 
 	msg.channel.send("", {files: ['images/nice.gif']});
 }, function(msg){
@@ -135,16 +140,19 @@ commands.add('points', function(msg, name, args){
 
 	let db_user = db.getUser(user.id);
 	let pronoun = user === msg.author ? 'Your' : user.username.match(/[\w\s-]+/g).join("") + "'s";
+	let points_locked = db_user.nice_points_locked?" [LOCKED]":"";
+	console.log(db_user);
 	let embed = userEmbed(user)
-		.addField('[NP] Nice Points', db_user.nice_points.toLocaleString())
+		.addField('[NP] Nice Points', db_user.nice_points.toLocaleString()+points_locked)
 		.addField(pronoun+' action score', (db_user.hugs+db_user.kisses).toLocaleString(), true)
 		.addField(pronoun+' word score', (db_user.nice_words-db_user.rude_words).toLocaleString(), true);
 
 	msg.channel.send(embed).then(msg => {
 		msg.react('🔁');
 		awaitReactions(msg.id, [author.id], ['🔁'], (reaction, u) => {
+			let points_locked = db_user.nice_points_locked?" [LOCKED]":"";
 			let embed = userEmbed(user)
-				.addField('[NP] Nice Points', db_user.nice_points.toLocaleString())
+				.addField('[NP] Nice Points', db_user.nice_points.toLocaleString()+points_locked)
 				.addField(pronoun+' action score', (db_user.hugs+db_user.kisses).toLocaleString(), true)
 				.addField(pronoun+' word score', (db_user.nice_words-db_user.rude_words).toLocaleString(), true);
 			msg.edit(embed);
@@ -152,6 +160,24 @@ commands.add('points', function(msg, name, args){
 	});
 }, function(msg){
 	return usage('points [@mention]')+'Check yours or another user\'s points.';
+});
+commands.add('lock', function(msg, name, args){
+	let author = msg.author;
+
+	let db_user = db.getUser(author.id);
+	let content = "";
+	if(db_user.nice_points_locked){
+		db_user.nice_points_locked = false;
+		content = mention(author.id)+"Your points have been unlocked!";
+	}else{
+		db_user.nice_points_locked = true;
+		content = mention(author.id)+"Your points have been locked!";
+	}
+	db_user.save();
+
+	msg.channel.send(content);
+}, function(msg){
+	return usage('lock')+'Locks or unlocks your points.\nYou will not be able to win, lose, receive, nor send any nice points while they are locked.';
 });
 
 commands.add('hug', function(msg, name, args){
@@ -221,13 +247,21 @@ commands.add('send', function(msg, name, args){
 	let db_from = db.getUser(author.id);
 	let db_to = db.getUser(userArg.id);
 
+	if(db_from.nice_points_locked){
+		msg.channel.send(mention(author.id)+"Your points are locked.");
+		return;
+	}else if(db_to.nice_points_locked){
+		msg.channel.send(mention(author.id)+"That user's points are locked.");
+		return;
+	}
+
 	if(amount<0){
 		db_from.nice_points += amount;
 		db_from.save();
-		msg.channel.send(`<@${author.id}> That wasn't nice of you...`);
+		msg.channel.send(mention(author.id)+"That wasn't nice of you...");
 		return;
 	}else if(db_from.nice_points < amount){
-		msg.channel.send(`<@${author.id}> You don't have enough NP!`);
+		msg.channel.send(mention(author.id)+"You don't have enough NP!");
 		return;
 	}
 
@@ -235,7 +269,7 @@ commands.add('send', function(msg, name, args){
 	db_to.nice_points += amount;
 	db_from.save();
 	db_to.save();
-	msg.channel.send(`<@${author.id}> Sent <@${userArg.id}> ${amount}NP.`);
+	msg.channel.send(mention(author.id)+`Sent ${mention(userArg.id)}${amount}NP.`);
 }, function(msg){
 	return usage('send @mention amount')+'Send a user some of your points.';
 });
