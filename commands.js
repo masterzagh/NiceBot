@@ -141,7 +141,6 @@ commands.add('points', function(msg, name, args){
 	let db_user = db.getUser(user.id);
 	let pronoun = user === msg.author ? 'Your' : user.username.match(/[\w\s-]+/g).join("") + "'s";
 	let points_locked = db_user.nice_points_locked?" [LOCKED]":"";
-	console.log(db_user);
 	let embed = userEmbed(user)
 		.addField('[NP] Nice Points', db_user.nice_points.toLocaleString()+points_locked)
 		.addField(pronoun+' action score', (db_user.hugs+db_user.kisses).toLocaleString(), true)
@@ -272,6 +271,20 @@ commands.add('send', function(msg, name, args){
 	msg.channel.send(mention(author.id)+`Sent ${mention(userArg.id)}${amount}NP.`);
 }, function(msg){
 	return usage('send @mention amount')+'Send a user some of your points.';
+});
+commands.add('reset', function(msg, name, args){
+	let author = msg.author;
+	if(!args[0] || args[0].toLowerCase() !== "please"){
+		msg.channel.send(mention(author.id)+'Only if you add please at the end.');
+		return;
+	}
+
+	let db_user = db.getUser(author.id);
+	db_user.reset();
+
+	msg.channel.send(mention(author.id)+`You have been reset.`, {files: ['images/reset.gif']});
+}, function(msg){
+	return usage('reset please')+'Resets all your values.';
 });
 
 let wordReactionTimeout = 15*60*1000;

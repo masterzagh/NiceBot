@@ -87,11 +87,24 @@ function DB_LIMITS(row){
 		}
 	}
 }
+function DB_RESET(row, except, object){
+	for(let i in row){
+		if(typeof row[i] == "function" || except.includes(i)) continue;
+		row[i] = object[i]?object[i]:null;
+	}
+}
 
 function DB_User(row){
 	DB_COLUMNS(DB_User, row);
 	DB_LIMITS(row);
 
+	row.reset = function(){
+		DB_RESET(row, ['user_id'], {
+			nice_points: 100,
+			reset_times: row.reset_times+1
+		});
+		row.save();
+	}
 	row.save = function(){
 		DB_User.dirty[row.user_id] = true;
 		DB_User.isDirty = true;
@@ -99,7 +112,7 @@ function DB_User(row){
 	};
 	row.sqlValues = function(){
 		let values = [];
-		DB_User.columns.forEach(c => values.push(row[c]));
+		DB_User.columns.forEach(c => values.push(row[c]+""));
 		return `(${values.join(', ')})`;
 	}
 
