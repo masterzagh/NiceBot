@@ -100,7 +100,6 @@ function DB_User(row){
 
 	row.reset = function(){
 		DB_RESET(row, ['user_id'], {
-			nice_points: 100,
 			reset_times: row.reset_times+1
 		});
 		row.save();
