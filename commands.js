@@ -139,10 +139,14 @@ commands.add('nice', function(msg, name, args){
 	return usage('nice')+'Nice.';
 });
 commands.add('top', function(msg, name, args){
-	let db_users = db.getTopUsers(10);
+	let db_users = db.getTopUsers(9);
 	let embed = titleEmbed('Top Users');
 	db_users.forEach((user, i) => {
-		embed.addField('#'+(i+1), mention(user.user_id)+' '+user.nice_points, true);
+		embed.addField(
+			'#'+(i+1),
+			mention(user.user_id)+' '+user.nice_points.toLocaleString(),
+			true
+		);
 	});
 	msg.channel.send(embed);
 }, function(msg){

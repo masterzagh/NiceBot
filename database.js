@@ -152,7 +152,9 @@ DB_User.get = function(user_id){
 }
 DB_User.getTop = function(limit){
 	DB_User.save();
-	return DB_User.getTopStmt.all(limit);
+	let users = DB_User.getTopStmt.all(limit);
+	users.map(user => new DB_User(user));
+	return users;
 }
 DB_User.save = function(){
 	if(!DB_User.isDirty) return;
