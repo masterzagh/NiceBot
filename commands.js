@@ -144,8 +144,7 @@ commands.add('top', function(msg, name, args){
 	db_users.forEach((user, i) => {
 		embed.addField(
 			'#'+(i+1),
-			mention(user.user_id)+' '+user.nice_points.toLocaleString(),
-			true
+			mention(user.user_id)+' '+user.nice_points.toLocaleString()
 		);
 	});
 	msg.channel.send(embed);
