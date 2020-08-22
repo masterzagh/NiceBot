@@ -78,6 +78,10 @@ function baseEmbed(){
 		.setTimestamp()
 		.setFooter(' - from your nice friend', client.user.avatarURL());
 }
+function titleEmbed(title){
+	return baseEmbed()
+		.setAuthor(title, null);
+}
 function userEmbed(author){
  return baseEmbed()
 	 .setAuthor(author.tag, author.avatarURL())
@@ -85,6 +89,8 @@ function userEmbed(author){
 }
 function getUserFromArg(msg, arg){
 	if(!arg) return null;
+
+	let user;
 	let mention = msg.mentions.users.first();
 	let match = arg.match(/<@!?(\d+)>/);
 	if(match && match[1] && mention && mention.id == match[1])
@@ -131,6 +137,16 @@ commands.add('nice', function(msg, name, args){
 	msg.channel.send("", {files: ['images/nice.gif']});
 }, function(msg){
 	return usage('nice')+'Nice.';
+});
+commands.add('top', function(msg, name, args){
+	let db_users = db.getTopUsers(10);
+	let embed = titleEmbed('Top Users');
+	db_users.forEach((user, i) => {
+		embed.addField('#'+(i+1), mention(user.user_id)+' '+user.nice_points, true);
+	});
+	msg.channel.send(embed);
+}, function(msg){
+	return usage('leader')+'Check the leaderboard.';
 });
 commands.add('points', function(msg, name, args){
 	let author = msg.author;
@@ -287,7 +303,7 @@ commands.add('reset', function(msg, name, args){
 	return usage('reset please')+'Resets all your values.';
 });
 
-let wordReactionTimeout = 15*60*1000;
+let wordReactionTimeout = 1*60*1000;
 let wordReactionTimeouts = {};
 let maxWordPerMessage = 5;
 
@@ -297,7 +313,7 @@ let rude_words = fs.readFileSync('wordlists/rude.txt', 'utf8').split(/(\r\n|\r|\
 let word_filter = word => !word.match(/^(|\r\n|\r|\n)$/);
 nice_words = nice_words.filter(word_filter);
 rude_words = rude_words.filter(word_filter);
-/*
+
 let nice_map = nice_words.reduce((cum, word) => {
 	cum[word] = true;
 	return cum;
@@ -306,15 +322,14 @@ let rude_map = rude_words.reduce((cum, word) => {
 	cum[word] = true;
 	return cum;
 }, {});
-*/
+
 let nice_regex = new RegExp(`(${nice_words.join('|')})`, 'gi');
 let rude_regex = new RegExp(`(${rude_words.join('|')})`, 'gi');
 
 let rude_reaction = ['', '', 'Be nice.', 'Please be nice :(', 'Be nice or else 😠'];
 let nice_reaction = ['', '', 'Nice message!', 'You\'re a nawesome fren :)', 'You\'re the CEO of NICE 😁'];
 commands.not_a_command = function(msg){
-	/*
-	let words = msg.content.split(/\s+/);
+	let words = msg.content.split(/\b/);
 	let rude_count = 0;
 	let nice_count = 0;
 	let count = 0;
@@ -331,13 +346,15 @@ commands.not_a_command = function(msg){
 				rude_count++;
 		}
 	});
-	*/
+
+	/*
 	let nice_match = msg.content.match(nice_regex);
 	let rude_match = msg.content.match(rude_regex);
 	let nice_count = nice_match?Math.min(nice_match.length, maxWordPerMessage):0;
 	let rude_count = rude_match?Math.min(rude_match.length, maxWordPerMessage):0;
 	let count = nice_count + rude_count;
 	let level = nice_count - rude_count;
+	*/
 
 	if(count>0){
 		let db_user = db.getUser(msg.author.id);

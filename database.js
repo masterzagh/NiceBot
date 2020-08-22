@@ -130,6 +130,12 @@ DB_User.getStmt = db.prepare(`
 	FROM users
 	WHERE user_id = ?;
 `);
+DB_User.getTopStmt = db.prepare(`
+	SELECT *
+	FROM users
+	ORDER BY nice_points DESC
+	LIMIT ?;
+`);
 DB_User.get = function(user_id){
 	let user = DB_User.cache[user_id];
 	if(user) return user;
@@ -143,6 +149,10 @@ DB_User.get = function(user_id){
 	user = new DB_User(user);
 	DB_User.cache[user.user_id] = user;
 	return user;
+}
+DB_User.getTop = function(limit){
+	DB_User.save();
+	return DB_User.getTopStmt.all(limit);
 }
 DB_User.save = function(){
 	if(!DB_User.isDirty) return;
@@ -163,6 +173,9 @@ DB_User.save = function(){
 // Utils
 db.getUser = function(user_id){
 	return DB_User.get(user_id);
+};
+db.getTopUsers = function(limit){
+	return DB_User.getTop(limit);
 };
 db.save = function(){
 	saveDatabase();
