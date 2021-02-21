@@ -144,7 +144,7 @@ commands.add('top', function(msg, name, args){
 	db_users.forEach((user, i) => {
 		embed.addField(
 			'#'+(i+1),
-			mention(user.user_id)+' '+user.nice_points.toLocaleString()
+			mention(user.user_id)+' '+(user.nice_points||0).toLocaleString()
 		);
 	});
 	msg.channel.send(embed);
@@ -161,18 +161,18 @@ commands.add('points', function(msg, name, args){
 	let pronoun = user === msg.author ? 'Your' : user.username.match(/[\w\s-]+/g).join("") + "'s";
 	let points_locked = db_user.nice_points_locked?" [LOCKED]":"";
 	let embed = userEmbed(user)
-		.addField('[NP] Nice Points', db_user.nice_points.toLocaleString()+points_locked)
-		.addField(pronoun+' action score', (db_user.hugs+db_user.kisses).toLocaleString(), true)
-		.addField(pronoun+' word score', (db_user.nice_words-db_user.rude_words).toLocaleString(), true);
+		.addField('[NP] Nice Points', (db_user.nice_points||0).toLocaleString()+points_locked)
+		.addField(pronoun+' action score', ((db_user.hugs+db_user.kisses)||0).toLocaleString(), true)
+		.addField(pronoun+' word score', ((db_user.nice_words-db_user.rude_words)||0).toLocaleString(), true);
 
 	msg.channel.send(embed).then(msg => {
 		msg.react('🔁');
 		awaitReactions(msg.id, [author.id], ['🔁'], (reaction, u) => {
 			let points_locked = db_user.nice_points_locked?" [LOCKED]":"";
 			let embed = userEmbed(user)
-				.addField('[NP] Nice Points', db_user.nice_points.toLocaleString()+points_locked)
-				.addField(pronoun+' action score', (db_user.hugs+db_user.kisses).toLocaleString(), true)
-				.addField(pronoun+' word score', (db_user.nice_words-db_user.rude_words).toLocaleString(), true);
+				.addField('[NP] Nice Points', (db_user.nice_points||0).toLocaleString()+points_locked)
+				.addField(pronoun+' action score', ((db_user.hugs+db_user.kisses)||0).toLocaleString(), true)
+				.addField(pronoun+' word score', ((db_user.nice_words-db_user.rude_words)||0).toLocaleString(), true);
 			msg.edit(embed);
 		});
 	});
